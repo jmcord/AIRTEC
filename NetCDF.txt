@@ -1,0 +1,332 @@
+rm(list=ls())
+
+
+PATH <- 'C:/Users/Jose María/Documents/AIRTEC/PM/NetCDF'
+setwd(PATH)
+
+
+library(RNetCDF)
+library(ncdf4)
+library(dplyr)
+library(stringr)
+library(lubridate)
+library(sqldf)
+library(dplyr)
+library(data.table)
+
+# Tiene 26880 celdas
+
+#PARA UN ARCHIVO
+
+#RNetCDF
+
+
+
+dataset <- open.nc(con = 'wrfout_d01_2015-02-01_00', write=FALSE, share=FALSE, prefill=TRUE)
+
+
+# data <- read.nc(dataset, recursive=FALSE)
+
+
+file.inq.nc(dataset)
+
+
+dim.inq.nc(dataset, dimension = 1)
+
+
+var.inq.nc(dataset, variable = 'PSFC')
+
+
+SLP <- var.get.nc(dataset, variable = 'PSFC')
+T <- var.get.nc(dataset, variable = 'T2')
+ele <- var.get.nc(dataset, variable = 'HGT')
+lat <- var.get.nc(dataset, variable = 'XLAT')
+lon <- var.get.nc(dataset, variable = 'XLONG')
+times <- var.get.nc(dataset, variable = 'Times')
+
+
+#ncdf4
+
+
+dataset <- nc_open('wrfout_d01_2015-02-01_00')
+variables = names(dataset[['var']])
+variables
+
+
+capture.output(print(dataset), file = "info.txt")
+
+
+#Prepare data
+
+
+datos_final <- cbind(lon,lat,T,SLP,ele) %>% data.frame()
+datos_final$date <- times
+
+
+n_grid <- length(times)
+dates_grids <- vector()
+
+
+
+
+for (i in c(1:n_grid)) {
+  date_grid <- times[i]
+  temp <- rep(date_grid, 26880)
+  dates_grids <- append(dates_grids, temp)
+}
+
+
+datos_final$date <- dates_grids
+
+
+
+
+write.csv(datos_final,"C:/GIS/output_FINAL/WRF_2015")
+
+
+#PARA UN AÑO
+
+netcdf <- data.frame()
+
+PATH <- 'G:/NetCDF/2015'
+setwd(PATH)
+
+
+files <- list.files()
+# files <- files[c(1:5)]
+
+# netcdf <- lapply(files, function(x) {
+#   setwd(PATH)
+#   dataset <- open.nc(con = x, write=FALSE, share=FALSE, prefill=TRUE)
+# 
+#   SLP <- var.get.nc(dataset, variable = 'PSFC')
+#   T <- var.get.nc(dataset, variable = 'T2')
+#   ele <- var.get.nc(dataset, variable = 'HGT')
+#   lat <- var.get.nc(dataset, variable = 'XLAT')
+#   lon <- var.get.nc(dataset, variable = 'XLONG')
+#   times <- var.get.nc(dataset, variable = 'Times')
+# 
+#   datos_final <- cbind(lon,lat,T,SLP,ele) %>% data.frame()
+#   datos_final$date <- times
+# 
+#   n_grid <- length(times)
+#   dates_grids <- vector()
+# 
+# 
+#   for (i in c(1:n_grid)) {
+#     date_grid <- times[i]
+#     temp <- rep(date_grid, 26880)
+#     dates_grids <- append(dates_grids, temp)
+#   }
+# 
+#   datos_final$date <- dates_grids
+# 
+#   datos_final$cord <- paste0(round(datos_final$lon,5),"_",round(datos_final$lat,5))
+# 
+#   datos_final$fecha <- str_sub(datos_final$date, 1L, 10L) %>% ymd()
+# 
+#   datos_final <- sqldf('select a.lon,a.lat,avg(a.T) As T,avg(a.SLP) As SLP, avg(a.ele) As ele, a.date, a.cord, a.fecha
+#                    from datos_final As a
+#                    group by a.fecha, a.cord')
+# 
+#   netcdf <- bind_rows(netcdf, datos_final)
+#   netcdf <- bind_rows(netcdf)
+# }
+# )
+
+# files <- lapply(files, function(x) {
+#   x <- str_sub(x, 1L, 24L)
+# })
+
+netcdf <- data.frame()
+
+PATH <- 'G:/NetCDF'
+setwd(PATH)
+
+
+files <- list.files(pattern='wrf')
+
+j=1
+
+for (name in files) {
+  x <- files[[j]]
+  dataset <- open.nc(con = x, write=FALSE, share=FALSE, prefill=TRUE)
+  
+  SLP <- var.get.nc(dataset, variable = 'PSFC')
+  T <- var.get.nc(dataset, variable = 'T2')
+  ele <- var.get.nc(dataset, variable = 'HGT')
+  lat <- var.get.nc(dataset, variable = 'XLAT')
+  lon <- var.get.nc(dataset, variable = 'XLONG')
+  times <- var.get.nc(dataset, variable = 'Times')
+  s_hum <- var.get.nc(dataset, variable = 'Q2')
+  u_wind <- var.get.nc(dataset, variable = 'U10')
+  v_wind <- var.get.nc(dataset, variable = 'V10')
+  PBL <- var.get.nc(dataset, variable = 'PBLH')
+  veg_cat <- var.get.nc(dataset, variable = 'IVGTYP')
+  veg_fraction <- var.get.nc(dataset, variable = 'VEGFRA')
+  
+  
+  # while (sum(is.na(times)) !=0) {
+  #   dataset <- open.nc(con = x, write=FALSE, share=FALSE, prefill=TRUE)
+  #   times <- var.get.nc(dataset, variable = 'Times')
+  #   print("Error de lectura")
+  # }
+  
+  datos_final <- cbind(lon,lat,T,SLP,ele,s_hum,u_wind,v_wind,PBL,veg_cat,veg_fraction) %>% data.frame()
+  
+  datos_final$date <- times
+  
+  n_grid <- length(times)
+  dates_grids <- vector()
+  
+  
+  for (i in c(1:n_grid)) {
+    date_grid <- times[i]
+    temp <- rep(date_grid, 26880)
+    dates_grids <- append(dates_grids, temp)
+  }
+  
+  datos_final$date <- dates_grids
+  
+  index <- which(str_sub(datos_final$date, 1L, 3L) != "201")
+  
+  # if (length(index) !=0)
+  # datos_final <- datos_final[-index,]
+  
+  
+  datos_final$cord <- paste0(round(datos_final$lon,5),"_",round(datos_final$lat,5))
+  
+  datos_final$fecha <- str_sub(datos_final$date, 1L, 10L) %>% ymd()
+  
+  DT <- data.table(datos_final)
+
+  #If below code fails, free space from disk
+  
+  datos_finall <- sqldf('select a.lon,a.lat, a.cord, a.fecha
+                       from datos_final As a
+                       group by a.fecha, a.cord')
+  
+  
+  datos_finalll <- sqldf('select avg(a.T) As T,avg(a.SLP) As SLP,
+                          avg(a.ele) As ele, a.date, a.cord, a.fecha,
+                          avg(a.s_hum) As s_hum, avg(a.u_wind) As u_wind, avg(a.v_wind) As v_wind,
+                          avg(a.PBL) As PBL, avg(a.veg_cat) As veg_cat, avg(a.veg_fraction) As veg_fraction
+                       from datos_final As a
+                       group by a.fecha, a.cord')
+  
+  # DT <- DT[,
+  #          lapply(.SD, mean),                     ## compute the mean
+  #          by = .(cord, fecha),           ## for every 'origin,dest,month'
+  #          .SDcols = c("T", "SLP", "ele")]
+
+  # 
+  # datos_final <- sqldf('select a.lon,a.lat,avg(a.T) As T,avg(a.SLP) As SLP, avg(a.ele) As ele, a.date, a.cord, a.fecha
+  #                      from datos_final As a
+  #                      group by a.fecha, a.cord')
+  
+
+  netcdf <- rbind(netcdf, cbind(datos_finall,datos_finalll[,!colnames(datos_finalll) 
+                  %in% c("fecha","cord")]))
+
+  j <- j + 1
+
+  }
+
+write.csv(netcdf, "../netcdf_2015_ampli.csv")
+
+
+#Bind the files
+
+
+
+
+PATH <- 'G:/NetCDF/netcdf_csv_2015'
+setwd(PATH)
+
+
+
+files <- list.files()
+
+WRF_2015 <- lapply(files, read.csv)
+
+
+WRF_2015 <- bind_rows(WRF_2015)
+
+#write.csv(WRF_2015, "G:/NetCDF/WRF_2015.csv")
+
+
+
+a <- read.csv(files[[7]])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#Pruebas
+
+
+
+p <- datos_final[, colnames(datos_final) %in% c('lon','lat','T')]
+
+write.csv(p[c(26881:53760),], 'prueba_GIS.csv')
+
+
+
+datos_final_netcdf$cord <- paste0(round(datos_final_netcdf$lon,5),"_",round(datos_final_netcdf$lat,5))
+
+
+cord <- "-3.51199_40.34633"
+fecha <- as.Date("2015-02-03")
+
+
+
+datos_final_netcdf$fecha <- str_sub(datos_final_netcdf$date, 1L, 10L) %>% ymd()
+
+
+
+datos_final_netcdf <- sqldf('select a.lon,a.lat,avg(a.T) As T,avg(a.SLP) As SLP, avg(a.ele) As ele, a.date, a.cord, a.fecha
+                   from datos_final_netcdf As a
+                   group by a.fecha, a.cord')
+
+
+
+
+which(datos_final_netcdf$cord == cord & datos_final_netcdf$fecha == fecha)
+
+
+
+datos_final_netcdf_prueba <- datos_final_netcdf[which(datos_final_netcdf$cord == cord & datos_final_netcdf$fecha == fecha),]
+
+
+
+which(datos_final$cord == cord & datos_final$fecha == fecha)
+
+
+
+datos_agregados_prueba <- datos_final[which(datos_final$cord == cord & datos_final$fecha == fecha),]
